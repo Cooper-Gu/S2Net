@@ -30,10 +30,18 @@ class Self_Adaptive_Weighted_Fusion_Module(nn.Module):
             nn.ReLU(inplace=True),
         )
 
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
     def forward(self, x0, x1, x2):
-        w = torch.sigmoid(self.conv1(torch.cat((x1, x2), dim=1)))
-        feat_x1 = torch.mul(x1, w)
-        feat_x2 = torch.mul(x2, w)
+        Wm1, Wm2 = torch.softmax(torch.cat((self.global_avg_pool(x1), self.global_avg_pool(x2)), dim=3), dim=3).unbind(-1)
+        Wm1 = Wm1.unsqueeze(-1)
+        Wm2 = Wm2.unsqueeze(-1)
+
+        x1 = Wm1 * x1
+        x2 = Wm2 * x2
+
+        Wr = torch.sigmoid(self.conv1(torch.cat((x1, x2), dim=1)))
+        feat_x1 = torch.mul(x1, Wr)
+        feat_x2 = torch.mul(x2, Wr)
         x = self.conv3(torch.cat((self.conv2(feat_x1 + feat_x2), x1, x2), dim=1))
         if not self.is_first:
             x = self.conv(torch.cat((x0, x), dim=1))

@@ -29,7 +29,7 @@ class Trainer(object):
         self.writer = self.summary.create_summary()
 
         # Define Dataloader
-        train_img_paths = glob.glob("/home/med_bci/data/datasets/ISLES_2022/ISLES_npy/train_data/image/*")
+        train_img_paths = glob.glob("/home/zxk/data/ISLES_npy/train_data/image/image/*")
         train_gt = glob.glob("/home/med_bci/data/datasets/ISLES_2022/ISLES_npy/train_data/mask/*")
 
         val_img_paths = glob.glob("/home/med_bci/data/datasets/ISLES_2022/ISLES_npy/val_data/image/*")

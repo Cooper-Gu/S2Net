@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from networks.S2Net.ConvNeXtV2_Block import ConvNeXtV2_Block,LayerNorm
-from networks.S2Net.SWFM import Self_Adaptive_Weighted_Fusion_Module
-from networks.S2Net.SAM import Self_Adaptive_Aligned_Module
+from ConvNeXtV2_Block import ConvNeXtV2_Block,LayerNorm
+from SWFM import Self_Adaptive_Weighted_Fusion_Module
+from SAM import Self_Adaptive_Aligned_Module
 
 def conv1x1(in_planes, out_planes, stride=1, bias=True):
     """1x1 convolution"""
@@ -95,9 +95,9 @@ class S2Net(nn.Module):
         self.down2_3 = Down(in_channels=dims[2], out_channels=dims[3])
 
         self.fusion1 = Self_Adaptive_Weighted_Fusion_Module(dims[0], is_first=True)
-        self.fusion2 = Self_Adaptive_Weighted_Fusion_Module(dims[1], is_first=True)
-        self.fusion3 = Self_Adaptive_Weighted_Fusion_Module(dims[2], is_first=True)
-        self.fusion4 = Self_Adaptive_Weighted_Fusion_Module(dims[3], is_first=True)
+        self.fusion2 = Self_Adaptive_Weighted_Fusion_Module(dims[1], is_first=False)
+        self.fusion3 = Self_Adaptive_Weighted_Fusion_Module(dims[2], is_first=False)
+        self.fusion4 = Self_Adaptive_Weighted_Fusion_Module(dims[3], is_first=False)
 
         self.bottom = Bottom(dims[3], dims[2])
 
@@ -143,9 +143,12 @@ class S2Net(nn.Module):
         f2_4 = self.enconder2_4(d2_3)
 
         fusion1 = self.fusion1(0, f1_1, f2_1)
-        fusion2 = self.fusion2(fusion1, f1_2, f2_2)
-        fusion3 = self.fusion3(fusion2, f1_3, f2_3)
-        fusion4 = self.fusion4(fusion3, f1_4, f2_4)
+        down_fusion1 = self.down1_1(fusion1)
+        fusion2 = self.fusion2(down_fusion1, f1_2, f2_2)
+        down_fusion2 = self.down1_2(fusion2)
+        fusion3 = self.fusion3(down_fusion2, f1_3, f2_3)
+        down_fusion3 = self.down1_3(fusion3)
+        fusion4 = self.fusion4(down_fusion3, f1_4, f2_4)
 
         bottom = self.bottom(fusion4)
 
@@ -165,27 +168,15 @@ class S2Net(nn.Module):
 
 
 if __name__ == '__main__':
-    image  = torch.randn((16, 3, 224, 224))
-    target = torch.randn((16, 1, 224, 224))
+    image  = torch.randn(16, 3, 224, 224)
+    target = torch.randn(16, 1, 224, 224)
     model = S2Net(num_classes=2)
     x1 = model(image)
 
     print(x1.size())
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    from thop import profile
+    flops, params = profile(model, (image,))
+    print('flops: ', flops, 'params: ', params)
+    print('flops: %.2f M, params: %.2f M' % (flops / 1000000.0, params / 1000000.0))
